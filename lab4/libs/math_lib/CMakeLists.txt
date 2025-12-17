@@ -9,6 +9,7 @@ add_library(math_lib SHARED
     ${MATH_LIB_HEADERS}
 )
 
+target_link_libraries(math_lib PRIVATE m)
 
 target_include_directories(math_lib
     PUBLIC
