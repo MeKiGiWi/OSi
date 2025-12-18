@@ -49,6 +49,7 @@ CodeStatus command_0(const char** LIB_NAMES, void** library, int* current_lib,
                 "warning: failed to find cos_derivative function "
                 "implementation\n";
             write(STDERR_FILENO, msg, sizeof(msg));
+            return CODE_STATUS_ER_DLOPEN;
         }
     } else {
         *sort = (sort_func_p)dlsym(*library, "sort_quicksort");
@@ -56,6 +57,7 @@ CodeStatus command_0(const char** LIB_NAMES, void** library, int* current_lib,
             const char msg[] =
                 "warning: failed to find sort function implementation\n";
             write(STDERR_FILENO, msg, sizeof(msg));
+            return CODE_STATUS_ER_DLOPEN;
         }
     }
 
