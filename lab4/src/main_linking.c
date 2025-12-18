@@ -77,9 +77,9 @@ int main(void) {
                 write(STDERR_FILENO, msg, strlen(msg));
                 return EXIT_FAILURE;
             }
-            int* temp_array = malloc(sizeof(int) * array_size);
+            int* temp_array = calloc(array_size, sizeof(int));
             if (!temp_array) {
-                const char* msg = "Erorr: failed to malloc memory\n";
+                const char* msg = "Erorr: failed to calloc memory\n";
                 write(STDERR_FILENO, msg, strlen(msg));
                 return EXIT_FAILURE;
             }
@@ -92,7 +92,7 @@ int main(void) {
 
             if (!count) {
                 len = snprintf(buffer, sizeof(buffer),
-                               "Error: Command 2 requires at least 1 argument "
+                               "Error: Command 2 requires at least 2 arguments "
                                "for sorting\n");
                 write(STDERR_FILENO, buffer, len);
                 return EXIT_FAILURE;
@@ -101,35 +101,35 @@ int main(void) {
             len = snprintf(buffer, sizeof(buffer), "Original array: ");
             write(STDOUT_FILENO, buffer, len);
 
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < array_size; i++) {
                 len = snprintf(buffer, sizeof(buffer), "%d ", temp_array[i]);
                 write(STDOUT_FILENO, buffer, len);
             }
 
-            int* temp_array_bubble = malloc(count * sizeof(int));
-            int* temp_array_quick = malloc(count * sizeof(int));
+            int* temp_array_bubble = malloc(array_size * sizeof(int));
+            int* temp_array_quick = malloc(array_size * sizeof(int));
 
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < array_size; i++) {
                 temp_array_bubble[i] = temp_array[i];
                 temp_array_quick[i] = temp_array[i];
             }
 
-            sort_bubble(temp_array_bubble, count);
+            sort_bubble(temp_array_bubble, array_size);
             len =
                 snprintf(buffer, sizeof(buffer), "\nSorted with bubble sort: ");
             write(STDOUT_FILENO, buffer, len);
 
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < array_size; i++) {
                 len = snprintf(buffer, sizeof(buffer), "%d ",
                                temp_array_bubble[i]);
                 write(STDOUT_FILENO, buffer, len);
             }
 
-            sort_quicksort(temp_array_quick, count);
+            sort_quicksort(temp_array_quick, array_size);
             len = snprintf(buffer, sizeof(buffer), "\nSorted with quicksort: ");
             write(STDOUT_FILENO, buffer, len);
 
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < array_size; i++) {
                 len = snprintf(buffer, sizeof(buffer), "%d ",
                                temp_array_quick[i]);
                 write(STDOUT_FILENO, buffer, len);
