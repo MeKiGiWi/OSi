@@ -158,11 +158,21 @@ int main(void) {
     sort_func_p sort = NULL;
 
     char buffer[BUFFER_SIZE];
+    int len;
+    len = snprintf(buffer, sizeof(buffer),
+                   " 1 <arg1> <arg2> - Calculate cosine derivative (takes 2 "
+                   "args: value, dx)\n");
+    write(STDOUT_FILENO, buffer, len);
+
+    len = snprintf(buffer, sizeof(buffer),
+                   " 2 <arg1> <arg2> ... <argN> - Sort array (provide at least "
+                   "2 numbers)\n");
+    write(STDOUT_FILENO, buffer, len);
 
     void* library = dlopen(LIB_NAMES[current_lib], RTLD_LAZY);
     if (!library) {
-        int len = snprintf(buffer, BUFFER_SIZE, "Error loading library: %s\n",
-                           dlerror());
+        len = snprintf(buffer, BUFFER_SIZE, "Error loading library: %s\n",
+                       dlerror());
         write(STDERR_FILENO, buffer, len);
         return CODE_STATUS_ER_DLOPEN;
     }
