@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <dlfcn.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -6,113 +7,221 @@
 #include <time.h>
 #include <unistd.h>
 
+#define BUFFER_SIZE 256
+#define FIRST 0
+#define SECOND 1
+
+typedef enum { CODE_STATUS_OK = 0, CODE_STATUS_ER_DLOPEN = 1 } CodeStatus;
+
+typedef float (*cos_derivative_func_p)(float, float);
+typedef int* (*sort_func_p)(int*, size_t);
+
+CodeStatus command_0(const char** LIB_NAMES, void** library, int* current_lib,
+                     cos_derivative_func_p* cos_derivative, sort_func_p* sort) {
+    dlclose(*library);
+    switch (*current_lib) {
+        case FIRST:
+            *current_lib = SECOND;
+            break;
+        case SECOND:
+            *current_lib = FIRST;
+            break;
+    }
+
+    char buffer[BUFFER_SIZE];
+
+    *library = dlopen(LIB_NAMES[*current_lib], RTLD_LAZY);
+    if (!(*library)) {
+        int len =
+            snprintf(buffer, BUFFER_SIZE, "Error switching: %s\n", dlerror());
+        write(STDERR_FILENO, buffer, len);
+        return CODE_STATUS_ER_DLOPEN;
+    }
+
+    *cos_derivative = NULL;
+    *sort = NULL;
+
+    if (*current_lib == FIRST) {
+        *cos_derivative =
+            (cos_derivative_func_p)dlsym(*library, "cos_derivative_method1");
+        if (!cos_derivative) {
+            const char msg[] =
+                "warning: failed to find cos_derivative function "
+                "implementation\n";
+            write(STDERR_FILENO, msg, sizeof(msg));
+        }
+    } else {
+        *sort = (sort_func_p)dlsym(*library, "sort_quicksort");
+        if (!sort) {
+            const char msg[] =
+                "warning: failed to find sort function implementation\n";
+            write(STDERR_FILENO, msg, sizeof(msg));
+        }
+    }
+
+    {
+        int len = snprintf(buffer, BUFFER_SIZE, "Switched to library: %s\n",
+                           LIB_NAMES[*current_lib]);
+        write(STDOUT_FILENO, buffer, len);
+    }
+
+    return CODE_STATUS_OK;
+}
+
+void command_1(cos_derivative_func_p cos_derivative) {
+    if (!cos_derivative) {
+        const char* msg =
+            "Cos derivative function not available in current library\n";
+        write(STDERR_FILENO, msg, strlen(msg));
+        return;
+    }
+
+    char* arg1 = strtok(NULL, " \t\n");
+    if (!arg1) {
+        const char* msg = "Error: too few args for cos\n";
+        write(STDERR_FILENO, msg, strlen(msg));
+        return;
+    }
+    char* arg2 = strtok(NULL, " \t\n");
+    if (!arg2) {
+        const char* msg = "Error: too few args for cos\n";
+        write(STDERR_FILENO, msg, strlen(msg));
+        return;
+    }
+    int len = 0;
+    char buffer[BUFFER_SIZE];
+
+    if (arg1 && arg2) {
+        float res = cos_derivative((float)atof(arg1), (float)atof(arg2));
+        len =
+            snprintf(buffer, BUFFER_SIZE, "Cos derivative result: %.5f\n", res);
+
+        write(STDOUT_FILENO, buffer, len);
+    }
+}
+
+void command_2(sort_func_p sort) {
+    if (!sort) {
+        const char* msg = "Sort function not available in current library\n";
+        write(STDERR_FILENO, msg, strlen(msg));
+        return;
+    }
+
+    char* size_str = strtok(NULL, " \t\n");
+    if (!size_str) return;
+
+    int size = atoi(size_str);
+    if (size <= 0) {
+        const char* msg = "Invalid array size\n";
+        write(STDERR_FILENO, msg, strlen(msg));
+        return;
+    }
+
+    int* array = malloc(size * sizeof(int));
+    if (!array) {
+        const char* message = "Unable to malloc memory for int* array\n";
+        write(STDERR_FILENO, message, strlen(message));
+        return;
+    }
+
+    for (int i = 0; i < size; ++i) {
+        char* value = strtok(NULL, " \t\n");
+        if (value)
+            array[i] = atoi(value);
+        else
+            array[i] = 0;
+    }
+
+    sort(array, size);
+
+    {
+        const char* message = "Sorted array: ";
+        write(STDOUT_FILENO, message, strlen(message));
+    }
+
+    char buffer[BUFFER_SIZE];
+    for (int i = 0; i < size; ++i) {
+        int len = snprintf(buffer, BUFFER_SIZE, "%d ", array[i]);
+        write(STDOUT_FILENO, buffer, len);
+    }
+
+    write(STDOUT_FILENO, "\n", 1);
+    free(array);
+}
+
 int main(void) {
-    void* math_lib_handle =
-        dlopen("./out/Debug/libs/libmath_lib.so", RTLD_LAZY);
-    if (!math_lib_handle) {
-        char error_msg[] = "Error: Cannot load math library\n";
-        write(STDERR_FILENO, error_msg, sizeof(error_msg));
-        dlclose(math_lib_handle);
-        return EXIT_FAILURE;
+    const char* LIB_NAMES[] = {"./out/Debug/libs/libmath_lib.so",
+                               "./out/Debug/libs/libsort_lib.so"};
+    int current_lib = FIRST;
+
+    cos_derivative_func_p cos_derivative = NULL;
+    sort_func_p sort = NULL;
+
+    char buffer[BUFFER_SIZE];
+
+    void* library = dlopen(LIB_NAMES[current_lib], RTLD_LAZY);
+    if (!library) {
+        int len = snprintf(buffer, BUFFER_SIZE, "Error loading library: %s\n",
+                           dlerror());
+        write(STDERR_FILENO, buffer, len);
+        return CODE_STATUS_ER_DLOPEN;
     }
 
-    void* sort_lib_handle =
-        dlopen("./out/Debug/libs/libsort_lib.so", RTLD_LAZY);
-    if (!sort_lib_handle) {
-        char error_msg[] = "Error: Cannot load sort library\n";
-        write(STDERR_FILENO, error_msg, sizeof(error_msg));
-        dlclose(math_lib_handle);
-        return EXIT_FAILURE;
+    if (current_lib == FIRST) {
+        cos_derivative =
+            (cos_derivative_func_p)dlsym(library, "cos_derivative_method1");
+        if (!cos_derivative) {
+            const char msg[] =
+                "Error: failed to find cos_derivative function "
+                "implementation\n";
+            write(STDERR_FILENO, msg, sizeof(msg));
+            return EXIT_FAILURE;
+        }
+        sort = NULL;
+    } else {
+        sort = (sort_func_p)dlsym(library, "sort_quicksort");
+        if (!sort) {
+            const char msg[] =
+                "Error: failed to find sort function implementation\n";
+            write(STDERR_FILENO, msg, sizeof(msg));
+            return EXIT_FAILURE;
+        }
+        cos_derivative = NULL;
     }
 
-    float (*cos_derivative_method1)(float, float) = (float (*)(
-        float, float))dlsym(math_lib_handle, "cos_derivative_method1");
-    float (*cos_derivative_method2)(float, float) = (float (*)(
-        float, float))dlsym(math_lib_handle, "cos_derivative_method2");
+    ssize_t bytes_read;
+    while ((bytes_read = read(STDIN_FILENO, buffer, BUFFER_SIZE - 1)) > 0) {
+        buffer[bytes_read] = 0;
 
-    int* (*sort_bubble)(int*, size_t) =
-        (int* (*)(int*, size_t))dlsym(sort_lib_handle, "sort_bubble");
-    int* (*sort_quicksort)(int*, size_t) =
-        (int* (*)(int*, size_t))dlsym(sort_lib_handle, "sort_quicksort");
+        char* token = strtok(buffer, " \t\n");
+        if (!token) return EXIT_SUCCESS;
 
-    char* error;
-    if ((error = dlerror())) {
-        char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg), "Error: %s\n", error);
-        write(STDERR_FILENO, error_msg, strlen(error_msg));
-        dlclose(math_lib_handle);
-        dlclose(sort_lib_handle);
-        return EXIT_FAILURE;
+        if (strlen(token) != 1 || !isdigit(token[0])) {
+            const char msg[] = "Error: command must be degit\n";
+            write(STDERR_FILENO, msg, sizeof(msg));
+            return EXIT_FAILURE;
+        }
+        int cmd = atoi(token);
+        switch (cmd) {
+            case 0: {
+                int result = command_0(LIB_NAMES, &library, &current_lib,
+                                       &cos_derivative, &sort);
+                if (result != CODE_STATUS_OK) return EXIT_FAILURE;
+                break;
+            }
+            case 1: {
+                command_1(cos_derivative);
+                break;
+            }
+            case 2: {
+                command_2(sort);
+                break;
+            }
+        }
+
+        write(STDOUT_FILENO, "> ", 2);
     }
 
-    float a = 1.0f;
-    float dx = 0.001f;
-    char buffer[256];
-    int len;
-
-    len = snprintf(buffer, sizeof(buffer), "Testing math functions:\n");
-    write(STDOUT_FILENO, buffer, len);
-
-    len = snprintf(buffer, sizeof(buffer),
-                   "cos_derivative_method1(%.3f, %.3f) = %.6f\n", a, dx,
-                   cos_derivative_method1(a, dx));
-    write(STDOUT_FILENO, buffer, len);
-
-    len = snprintf(buffer, sizeof(buffer),
-                   "cos_derivative_method2(%.3f, %.3f) = %.6f\n", a, dx,
-                   cos_derivative_method2(a, dx));
-    write(STDOUT_FILENO, buffer, len);
-
-    size_t array_size = 10;
-    int* arr = malloc(array_size * sizeof(int));
-
-    if (!arr) {
-        const char msg[] = "Error: cant allocate memory";
-        write(STDERR_FILENO, msg, sizeof(msg));
-        dlclose(math_lib_handle);
-        dlclose(sort_lib_handle);
-        return EXIT_FAILURE;
-    }
-
-    srand((unsigned int)time(NULL));
-
-    len = snprintf(buffer, sizeof(buffer), "\nOriginal array: ");
-    write(STDOUT_FILENO, buffer, len);
-
-    for (size_t i = 0; i < array_size; ++i) {
-        arr[i] = rand() % 101;
-        len = snprintf(buffer, sizeof(buffer), "%d ", arr[i]);
-        write(STDOUT_FILENO, buffer, len);
-    }
-
-    int* bubble_sorted = sort_bubble(arr, array_size);
-
-    len = snprintf(buffer, sizeof(buffer), "\nBubble sorted array: ");
-    write(STDOUT_FILENO, buffer, len);
-
-    for (size_t i = 0; i < array_size; ++i) {
-        len = snprintf(buffer, sizeof(buffer), "%d ", bubble_sorted[i]);
-        write(STDOUT_FILENO, buffer, len);
-    }
-
-    srand((unsigned int)time(NULL));
-    for (size_t i = 0; i < array_size; ++i) {
-        arr[i] = rand() % 101;
-    }
-
-    int* quick_sorted = sort_quicksort(arr, array_size);
-
-    len = snprintf(buffer, sizeof(buffer), "\nQuick sorted array: ");
-    write(STDOUT_FILENO, buffer, len);
-
-    for (size_t i = 0; i < array_size; ++i) {
-        len = snprintf(buffer, sizeof(buffer), "%d ", quick_sorted[i]);
-        write(STDOUT_FILENO, buffer, len);
-    }
-
-    free(arr);
-
-    dlclose(math_lib_handle);
-    dlclose(sort_lib_handle);
+    if (library) dlclose(library);
     return EXIT_SUCCESS;
 }

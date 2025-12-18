@@ -1,12 +1,10 @@
 set(MATH_LIB_SOURCES
-    math_lib.c
 )
 set(MATH_LIB_HEADERS
-    math_lib.h
 )
 add_library(math_lib SHARED
-    ${MATH_LIB_SOURCES}
-    ${MATH_LIB_HEADERS}
+    math_lib.c
+    math_lib.h
 )
 
 target_link_libraries(math_lib PRIVATE m)

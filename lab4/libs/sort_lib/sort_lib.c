@@ -45,7 +45,7 @@ static void quicksort_recursive(int* array, int low, int high) {
 int* sort_quicksort(int* array, size_t n) {
     if (n <= 1 || !array) return array;
 
-    quicksort_recursive(array, 0, size_t(n - 1));
+    quicksort_recursive(array, 0, (int)(n - 1));
 
     return array;
 }

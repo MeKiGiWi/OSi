@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "math_lib.h"
@@ -21,7 +20,7 @@ int main(void) {
 
     len = snprintf(buffer, sizeof(buffer),
                    " 2 <arg1> <arg2> ... <argN> - Sort array (provide at least "
-                   "1 number)\n");
+                   "2 numbers)\n");
     write(STDOUT_FILENO, buffer, len);
 
     len = snprintf(buffer, sizeof(buffer), "  Enter command: ");
@@ -38,9 +37,7 @@ int main(void) {
 
         char* token = strtok(input_buffer, " \t\n");
         if (!token) {
-            len = snprintf(buffer, sizeof(buffer), "Enter command: ");
-            write(STDOUT_FILENO, buffer, len);
-            continue;
+            return EXIT_SUCCESS;
         }
 
         if (!strcmp(token, "1")) {
@@ -72,11 +69,23 @@ int main(void) {
             write(STDOUT_FILENO, buffer, len);
 
         } else if (!strcmp(token, "2")) {
-            int temp_array[100];
-            int count = 0;
-
             char* arg;
-            while ((arg = strtok(NULL, " \t\n")) && count < 100) {
+            arg = strtok(NULL, " \t\n");
+            int array_size = atoi(arg);
+            if (array_size < 0) {
+                const char* msg = "Invalid array size\n";
+                write(STDERR_FILENO, msg, strlen(msg));
+                return EXIT_FAILURE;
+            }
+            int* temp_array = malloc(sizeof(int) * array_size);
+            if (!temp_array) {
+                const char* msg = "Erorr: failed to malloc memory\n";
+                write(STDERR_FILENO, msg, strlen(msg));
+                return EXIT_FAILURE;
+            }
+
+            int count = 0;
+            while ((arg = strtok(NULL, " \t\n")) && count < array_size) {
                 temp_array[count] = atoi(arg);
                 count++;
             }
@@ -131,9 +140,6 @@ int main(void) {
 
             free(temp_array_bubble);
             free(temp_array_quick);
-
-        } else if (!strcmp(token, "exit")) {
-            return EXIT_SUCCESS;
         } else {
             len = snprintf(buffer, sizeof(buffer), "Unknown command");
             write(STDERR_FILENO, buffer, len);
